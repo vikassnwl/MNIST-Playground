@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MNIST DIGIT PREDICTOR</title>
+    <style>
+        #myCanvas{
+            border: 3px solid black; 
+            cursor: none; 
+            float: left
+        }
+
+        #prediction{
+            width: 250px; 
+            height: 500px; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            flex-direction: column;
+        }
+
+        #label{
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 120px; 
+            height: 170px;
+            border: 2px solid blue; 
+            font-family: arial; 
+            color: blue;
+            position: relative
+        }
+
+        label{
+            font-size: 150px
+        }
+
+        #proba{
+            position: absolute; 
+            bottom: 1px; 
+            font-size: 14px;
+        }
+
+        #classify-btn{
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 120px; 
+            height: 35px;
+            border: 2px solid blue; 
+            font-family: arial; 
+            color: blue;
+            font-size: 25px
+        }
+    </style>
+</head>
+<body>
+    <canvas id="myCanvas" width="500" height="500"></canvas>
+    <div id="prediction">
+        <div id="label">
+            <label></label>
+            <div id="proba"></div>
+        </div><br>
+        <div id="classify-btn">Classify</div>
+    </div>
+    <script>
+        xpos = -1
+        ypos = -1
+        pixels = []
+        for(i=0; i<28; i++){
+            row = []
+            for(j=0; j<28; j++){
+                row[j] = 0
+            }
+            pixels[i] = row
+        }
+        pixelSize = 500/28
+        mpushed = false
+
+        window.onload = function(){
+            canvas = document.getElementById("myCanvas")
+            ctx = canvas.getContext("2d")
+            canvas.addEventListener("mousemove", mouseMove)
+            canvas.addEventListener("mousedown", mouseDown)
+            canvas.addEventListener("mouseup", mouseUp)
+            canvas.addEventListener("mouseout", mouseOut)
+            setInterval(draw, 25)
+        }
+        
+        function clear(){
+            ctx.clearRect(0, 0, 500, 500)
+        }
+
+        function draw(){
+            clear()
+            for(i=0; i<28; i++){
+                for(j=0; j<28; j++){
+                    if(pixels[i][j] == 255)
+                        ctx.fillRect(j*pixelSize, i*pixelSize, pixelSize, pixelSize)
+                }
+            }
+            if(xpos != -1 && ypos != -1){
+                ctx.strokeStyle = "#999999"
+                ctx.strokeRect(xpos-15, ypos-15, 30, 30)
+            }
+        }
+
+        function updatePixelsArray(){
+            dx = [0, -1, -1, 0]
+            dy = [0, -1, 0, -1]
+            for(i=0; i<dx.length; i++){
+                y = Math.round(ypos/pixelSize)+dy[i]
+                x = Math.round(xpos/pixelSize)+dx[i]
+                if(y >= 0 && y < 28 && x >= 0 && x < 28){
+                    pixels[y][x] = 255
+                }
+            }
+        }
+
+        function mouseMove(e){
+            xpos = e.pageX-canvas.offsetLeft
+            ypos = e.pageY-canvas.offsetTop
+            if(mpushed)
+                updatePixelsArray()
+        }
+
+        function mouseDown(e){
+            mpushed = true
+            updatePixelsArray()
+        }
+
+        function mouseUp(e){
+            mpushed = false
+        }
+
+        function mouseOut(e){
+            xpos = -1
+            ypos = -1
+        }
+
+        document.getElementById("classify-btn").addEventListener("click", function() {
+            const url = 'http://127.0.0.1:5000';
+            const data = { pixels: pixels };
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementsByTagName("label")[0].textContent = data["prediction"]
+                document.getElementById("proba").textContent = `Probability = ${Number(data["proba"]).toFixed(2)}`
+            })
+            .catch(error => console.error('Error:', error));
+        });
+    </script>
+</body>
+</html>
